@@ -2,6 +2,12 @@
 
 Polska aplikacja do świątecznego losowania prezentów. Administrator dodaje osoby, ustala kierunkowe wykluczenia, tworzy losowanie i kopiuje indywidualne linki. Po otwarciu linku uczestnik od razu widzi, komu kupuje prezent.
 
+## Osobne panele dla znajomych
+
+Po zalogowaniu kliknij **Utwórz link administratora dla znajomego**. Przekaż wygenerowany adres jednej osobie. Link otwiera jej osobny panel bez hasła; może tworzyć własne losowania, zapisać link i wracać do niego także po restarcie serwera. Każdy nowy link oznacza niezależny panel. Organizator może tworzyć kolejne panele dla swoich znajomych.
+
+Panele mają osobne listy losowań i uczestników. Nie przekazuj znajomemu głównego hasła. Link administratora jest sekretnym kluczem do całego jego panelu; link uczestnika pokazuje wyłącznie jego wynik. Zapisz link administratora — nie ma odzyskiwania ani unieważniania linków w interfejsie. Właściciel serwera nadal ma dostęp do całej bazy.
+
 ## Zasady
 
 - Każdy kupuje dokładnie jeden prezent i otrzymuje dokładnie jeden.
@@ -45,7 +51,7 @@ Powyższe ustawienie `COOKIE_SECURE=1` wymaga HTTPS na reverse proxy. Do lokalne
 
 ## Prywatność
 
-Tokeny linków mają 256 bitów losowości. Token znajduje się we fragmencie URL i jest przesyłany w treści żądania, a serwer nie zapisuje logów żądań. Publiczne API zwraca tylko wynik posiadacza danego linku; lista linków wymaga sesji administratora. Brak skryptów analitycznych i zewnętrznych zasobów.
+Tokeny linków mają 256 bitów losowości. Token znajduje się we fragmencie URL i jest przesyłany w treści żądania, a serwer nie zapisuje logów żądań. Publiczne API zwraca tylko wynik posiadacza danego linku; lista linków wymaga sesji głównego administratora albo tokenu odpowiedniego panelu. Tokeny paneli przechowywane są w bazie jako skróty SHA-256. Brak skryptów analitycznych i zewnętrznych zasobów.
 
 Link daje dostęp do wyniku każdemu, kto go posiada. Administrator ma wszystkie linki i dostęp do bazy, więc może poznać wyniki. Baza przechowuje dane uczestników i linki — zabezpiecz dysk oraz kopie zapasowe. Nie dodawaj bazy ani haseł do Gita. Przy publicznym wdrożeniu ustaw limit prób logowania na reverse proxy. Zmiana hasła nie unieważnia sesji do czasu restartu.
 

@@ -1,8 +1,10 @@
 const $ = id => document.getElementById(id);
 let exclusions = new Set();
+// An organizer link grants access only to its own workspace.
+const organizerToken = location.hash.startsWith('#admin=') ? location.hash.slice(7) : ''; 
 const message = text => $('message').textContent = text;
 async function api(path, data) {
-  const response = await fetch('/api/' + path, data === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'gift-draw' }, body: JSON.stringify(data) });
+  const response = await fetch('/api/' + path, { method: data === undefined ? 'GET' : 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'gift-draw', ...(organizerToken ? {'X-Organizer-Token': organizerToken} : {}) }, ...(data === undefined ? {} : {body: JSON.stringify(data)}) });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'Nie udało się wykonać operacji.');
   return result;
@@ -51,7 +53,7 @@ async function init() {
 }
 $('names').addEventListener('input', rules);
 $('login-form').onsubmit = async event => { event.preventDefault(); message(''); try { await api('login', {password: $('password').value}); $('password').value = ''; await init(); } catch(e) { message(e.message); } };
-$('logout').onclick = async () => { try { await api('logout', {}); location.reload(); } catch(e) { message(e.message); } };
+$('logout').onclick = async () => { try { await api('logout', {}); location.href = location.pathname; } catch(e) { message(e.message); } };
 $('draw-form').onsubmit = async event => {
   event.preventDefault(); message(''); $('submit').disabled = true;
   try {
@@ -62,3 +64,14 @@ $('draw-form').onsubmit = async event => {
   } catch(e) { message(e.message); } finally { $('submit').disabled = false; }
 };
 init();
+
+$('new-organizer').onclick = async () => {
+  try {
+    const result = await api('organizers', {});
+    const input = $('organizer-link');
+    input.value = location.origin + '/#admin=' + result.token;
+    $('organizer-share').hidden = false;
+    input.focus(); input.select();
+    message('Nowy prywatny panel jest gotowy. Skopiuj link i przekaż go znajomemu.');
+  } catch(e) { message(e.message); }
+};

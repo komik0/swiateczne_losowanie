@@ -37,16 +37,37 @@ class ApiTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.server.shutdown(); cls.server.server_close(); cls.tmp.cleanup()
-    def call(self, path, data=None, cookie=None, header=True):
+    def call(self, path, data=None, cookie=None, header=True, organizer=None):
         headers = {'Content-Type':'application/json'}
         if header: headers['X-Requested-With'] = 'gift-draw'
         if cookie: headers['Cookie'] = cookie
+        if organizer: headers['X-Organizer-Token'] = organizer
         req = urllib.request.Request(self.base + path, data=json.dumps(data).encode() if data is not None else None, headers=headers)
         try:
             with urllib.request.urlopen(req) as response:
                 return response.status, json.load(response), response.headers
         except urllib.error.HTTPError as e:
             return e.code, json.load(e), e.headers
+    def test_organizer_isolation(self):
+        _, _, headers = self.call('/api/login', {'password':'test-password-only'})
+        cookie = headers['Set-Cookie'].split(';')[0]
+        self.assertEqual(self.call('/api/organizers', {})[0], 401)
+        tokens = [self.call('/api/organizers', {}, cookie)[1]['token'] for _ in range(2)]
+        for i, token in enumerate(tokens):
+            status, _, _ = self.call('/api/draws', {'title':f'Private {i}', 'names':['X','Y']}, organizer=token)
+            self.assertEqual(status, 201)
+        for i, token in enumerate(tokens):
+            status, draws, _ = self.call('/api/draws', organizer=token)
+            self.assertEqual(status, 200)
+            self.assertEqual([d['title'] for d in draws], [f'Private {i}'])
+            # Organizer identity takes precedence even if a master cookie is present.
+            self.assertEqual(len(self.call('/api/draws', cookie=cookie, organizer=token)[1]), 1)
+        self.assertEqual(self.call('/api/draws', organizer='invalid')[0],401)
+        master = self.call('/api/draws', cookie=cookie)[1]
+        self.assertTrue(all(not d['title'].startswith('Private ') for d in master))
+        # Reopening the same token retains access without a password/session.
+        self.assertTrue(self.call('/api/session', organizer=tokens[0])[1]['authenticated'])
+
     def test_end_to_end(self):
         self.assertEqual(self.call('/api/draws')[0],401)
         self.assertEqual(self.call('/api/login', {'password':'bad'})[0],401)

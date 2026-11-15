@@ -17,6 +17,10 @@ def connect():
     Path(DB).parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(DB)
     db.execute('CREATE TABLE IF NOT EXISTS draws (id TEXT PRIMARY KEY, title TEXT, links TEXT)')
+    db.execute('CREATE TABLE IF NOT EXISTS organizers (token TEXT PRIMARY KEY)')
+    if 'owner' not in [row[1] for row in db.execute('PRAGMA table_info(draws)')]:
+        db.execute("ALTER TABLE draws ADD COLUMN owner TEXT NOT NULL DEFAULT ''")
+    db.commit()
     db.execute('CREATE TABLE IF NOT EXISTS results (token TEXT PRIMARY KEY, giver TEXT, recipient TEXT, title TEXT)')
     return db
 
@@ -69,6 +73,14 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def owner(self):
+        token = self.headers.get('X-Organizer-Token', '')
+        if token:
+            with connect() as db:
+                found = db.execute('SELECT token FROM organizers WHERE token=?', (digest(token),)).fetchone()
+            return found[0] if found else None
+        return '' if self.admin() else None
+
     def admin(self):
         cookie = SimpleCookie()
         cookie.load(self.headers.get('Cookie', ''))
@@ -77,12 +89,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == '/api/session':
-            return self.send(200, {'authenticated': self.admin()})
+            return self.send(200, {'authenticated': self.owner() is not None})
         if self.path == '/api/draws':
-            if not self.admin():
+            if self.owner() is None:
                 return self.send(401, {'error': 'Zaloguj się jako administrator.'})
             with connect() as db:
-                rows = db.execute('SELECT id,title,links FROM draws ORDER BY rowid DESC').fetchall()
+                rows = db.execute('SELECT id,title,links FROM draws WHERE owner=? ORDER BY rowid DESC', (self.owner(),)).fetchall()
             return self.send(200, [{'id': i, 'title': t, 'links': json.loads(l)} for i,t,l in rows])
         files = {'/': ('index.html','text/html; charset=utf-8'), '/app.js': ('app.js','text/javascript; charset=utf-8'), '/style.css': ('style.css','text/css; charset=utf-8')}
         if self.path not in files:
@@ -127,8 +139,13 @@ class Handler(BaseHTTPRequestHandler):
                 if not result:
                     return self.send(404, {'error': 'Ten link nie istnieje. Poproś organizatora o poprawny link.'})
                 return self.send(200, dict(zip(['giver','recipient','title'], result)))
-            if not self.admin():
+            if self.owner() is None:
                 return self.send(401, {'error': 'Zaloguj się jako administrator.'})
+            if self.path == '/api/organizers':
+                token = secrets.token_urlsafe(32)
+                with connect() as db:
+                    db.execute('INSERT INTO organizers VALUES (?)', (digest(token),))
+                return self.send(201, {'token': token})
             if self.path == '/api/logout':
                 cookie = SimpleCookie(self.headers.get('Cookie',''))
                 if cookie.get('session'):
@@ -146,7 +163,7 @@ class Handler(BaseHTTPRequestHandler):
                 links = [{'name': names[i], 'token': secrets.token_urlsafe(32)} for i in range(len(names))]
                 draw_id = secrets.token_urlsafe(16)
                 with connect() as db:
-                    db.execute('INSERT INTO draws VALUES (?,?,?)', (draw_id, title, json.dumps(links)))
+                    db.execute('INSERT INTO draws (id,title,links,owner) VALUES (?,?,?,?)', (draw_id, title, json.dumps(links), self.owner()))
                     db.executemany('INSERT INTO results VALUES (?,?,?,?)', [(digest(link['token']), names[i], names[matching[i]], title) for i,link in enumerate(links)])
                 return self.send(201, {'id': draw_id, 'title': title, 'links': links})
             self.send(404, {'error': 'Nie znaleziono.'})

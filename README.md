@@ -2,6 +2,20 @@
 
 Polska aplikacja do świątecznego losowania prezentów. Administrator dodaje osoby, ustala kierunkowe wykluczenia, tworzy losowanie i kopiuje indywidualne linki. Po otwarciu linku uczestnik od razu widzi, komu kupuje prezent.
 
+## Aplikacja online
+
+**[Otwórz Pod choinką](https://pod-choinka-komik0.plaidcrown4.chatgpt.site)**
+
+1. Kliknij **Utwórz mój panel administratora**.
+2. Zapisz swój prywatny link administratora — pozwala wrócić także na innym urządzeniu.
+3. Dodaj osoby, ustaw wykluczenia i utwórz losowanie.
+4. Wyślij każdemu uczestnikowi wyłącznie jego link z wynikiem.
+5. Znajomemu przekaż link utworzony przyciskiem **Utwórz link administratora dla znajomego** albo adres strony głównej — utworzy własny, niezależny panel.
+
+Wersja online działa w Sites na Cloudflare Workers z trwałą bazą D1. Uczestnicy i organizatorzy nie muszą zakładać kont. Szczegóły i źródła znajdują się w [hosting/](hosting/README.md). GitHub Pages nie obsługuje serwera ani wspólnej bazy tej aplikacji. GitHub przechowuje kod; sam push nie uruchamia publikacji w Sites.
+
+Dalsza część opisuje alternatywną wersję Python do samodzielnego uruchomienia, z osobną bazą danych i głównym hasłem administratora.
+
 ## Osobne panele dla znajomych
 
 Po zalogowaniu kliknij **Utwórz link administratora dla znajomego**. Przekaż wygenerowany adres jednej osobie. Link otwiera jej osobny panel bez hasła; może tworzyć własne losowania, zapisać link i wracać do niego także po restarcie serwera. Każdy nowy link oznacza niezależny panel. Organizator może tworzyć kolejne panele dla swoich znajomych.
